@@ -10,7 +10,8 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const PORT = process.env.PORT || 4000;
 const app = express();
-app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Update this origin after deploying frontend!
+// Allow all origins for lab deployment simplicity
+app.use(cors());
 app.use(express.json());
 
 // Root route for health check

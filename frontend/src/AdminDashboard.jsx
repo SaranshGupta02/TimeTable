@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useNotification } from './NotificationContext';
 
-const API_URL = 'http://localhost:4000/api';
+import * as api from './api';
 
 function AdminDashboard() {
     const navigate = useNavigate();
@@ -27,41 +27,24 @@ function AdminDashboard() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch(`${API_URL}/admin/users`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) setUsers(data.users);
-            else showNotification(data.error || 'Failed to fetch users', 'error');
-        } catch (err) { showNotification('Failed to fetch users', 'error'); }
+            const data = await api.getUsers();
+            setUsers(data);
+        } catch (err) { showNotification(err.message, 'error'); }
     };
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch(`${API_URL}/classes`);
-            const data = await res.json();
-            if (res.ok) setClasses(data.classes);
-            else showNotification('Failed to fetch classes', 'error');
-        } catch (err) { showNotification('Failed to fetch classes', 'error'); }
+            const data = await api.getClasses();
+            setClasses(data);
+        } catch (err) { showNotification(err.message, 'error'); }
     };
 
     const handleApproval = async (userId, approve) => {
         try {
-            const res = await fetch(`${API_URL}/admin/approve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ userId, approve })
-            });
-            if (res.ok) {
-                showNotification(approve ? 'Professor Approved' : 'Access Revoked', 'success');
-                fetchUsers();
-            } else {
-                showNotification('Action failed', 'error');
-            }
-        } catch (err) { showNotification('Action failed', 'error'); }
+            await api.approveUser(userId, approve);
+            showNotification(approve ? 'Professor Approved' : 'Access Revoked', 'success');
+            fetchUsers();
+        } catch (err) { showNotification(err.message, 'error'); }
     };
 
     const handleCreateClass = async () => {
@@ -70,28 +53,13 @@ function AdminDashboard() {
             return;
         }
         try {
-            console.log('Creating class:', newClassId);
-            const res = await fetch(`${API_URL}/admin/classes`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ classId: newClassId })
-            });
-            const data = await res.json();
-
-            if (res.ok) {
-                showNotification(`Class ${newClassId} created successfully`, 'success');
-                setNewClassId('');
-                setShowAddClass(false);
-                fetchClasses();
-            } else {
-                showNotification(data.error || 'Failed to create class', 'error');
-            }
+            await api.createClass(newClassId);
+            showNotification(`Class ${newClassId} created successfully`, 'success');
+            setNewClassId('');
+            setShowAddClass(false);
+            fetchClasses();
         } catch (err) {
-            console.error(err);
-            showNotification('Failed to create class', 'error');
+            showNotification(err.message, 'error');
         }
     };
 

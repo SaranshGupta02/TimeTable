@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-
-const API_URL = 'http://localhost:4000/api';
+import { login as apiLogin } from './api';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -14,27 +13,18 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
+      const data = await apiLogin(email, password);
 
-      if (res.ok) {
-        login(data.user, data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+      login(data.user, data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
 
-        if (data.user.role === 'admin') {
-          navigate('/admin');
-        } else {
-          navigate('/timetable');
-        }
+      if (data.user.role === 'admin') {
+        navigate('/admin');
       } else {
-        setError(data.error);
+        navigate('/timetable');
       }
     } catch (err) {
-      setError('Login failed. Ensure backend is running.');
+      setError(err.message || 'Login failed. Ensure backend is running.');
     }
   };
 

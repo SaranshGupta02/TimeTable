@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-const API_URL = 'http://localhost:4000/api';
+import { register } from './api';
 
 function Register() {
     const navigate = useNavigate();
@@ -24,23 +24,13 @@ function Register() {
         }
 
         try {
-            const res = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const data = await res.json();
-
-            if (res.ok) {
-                setMsg(data.message);
-                setError('');
-                setTimeout(() => navigate('/'), 3000);
-            } else {
-                setError(data.error);
-                setMsg('');
-            }
+            const data = await register(formData);
+            setMsg(data.message);
+            setError('');
+            setTimeout(() => navigate('/'), 3000);
         } catch (err) {
-            setError('Registration failed');
+            setError(err.message || 'Registration failed');
+            setMsg('');
         }
     };
 

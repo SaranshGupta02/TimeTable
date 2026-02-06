@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.production
+.env.local
+
+# Build Output
+dist/
+build/
+
+# IDE/System
+.DS_Store
+.vscode/

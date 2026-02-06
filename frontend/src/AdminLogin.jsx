@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-
-const API_URL = 'http://localhost:4000/api';
+import { login as apiLogin } from './api';
 
 function AdminLogin() {
     const [email, setEmail] = useState('admin@nitkkr.ac.in');
@@ -14,26 +13,17 @@ function AdminLogin() {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await res.json();
+            const data = await apiLogin(email, password);
 
-            if (res.ok) {
-                if (data.user.role !== 'admin') {
-                    setError('Access Denied: Not an admin account');
-                    return;
-                }
-                login(data.user, data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/admin');
-            } else {
-                setError(data.error);
+            if (data.user.role !== 'admin') {
+                setError('Access Denied: Not an admin account');
+                return;
             }
+            login(data.user, data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            navigate('/admin');
         } catch (err) {
-            setError('Login failed. Ensure backend is running.');
+            setError(err.message || 'Login failed. Ensure backend is running.');
         }
     };
 

@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:4000/api';
+const BASE = 'https://timetable-backend.onrender.com/api';
 
 function getToken() {
   return localStorage.getItem('token');

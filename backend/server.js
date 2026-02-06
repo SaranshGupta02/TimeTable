@@ -10,8 +10,13 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const PORT = process.env.PORT || 4000;
 const app = express();
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Update this origin after deploying frontend!
 app.use(express.json());
+
+// Root route for health check
+app.get('/', (req, res) => {
+  res.send('Timetable Management System API is running');
+});
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const PERIODS = 8;

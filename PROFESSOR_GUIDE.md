@@ -15,7 +15,7 @@ This web application handles dynamic timetable scheduling with strict Role-Based
 1.  **Login as Admin**.
 2.  **Create a Class**:
     *   Go to Dashboard -> "Manage Classes".
-    *   Enter a Class ID (e.g., `CS-Final-Year`) and click **Add**.
+    *   Enter a Class ID (e.g., `IT-third-Year`) and click **Add**.
     *   *System Action*: Creates a full empty weekly schedule for this class.
 3.  **Define Slot Ownership**:
     *   Go to **Timetable** view for the new class.

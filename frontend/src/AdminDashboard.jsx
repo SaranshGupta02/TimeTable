@@ -69,6 +69,16 @@ function AdminDashboard() {
         } catch (err) { showNotification(err.message, 'error'); }
     };
 
+    const handleDeleteClass = async (e, classId) => {
+        e.stopPropagation(); // Prevent card click
+        if (!window.confirm(`Are you sure you want to delete Class ${classId}?\nThis will delete ALL schedule data for this class permanently.`)) return;
+        try {
+            await api.deleteClass(classId);
+            showNotification(`Class ${classId} deleted`, 'success');
+            fetchClasses();
+        } catch (err) { showNotification(err.message, 'error'); }
+    };
+
     const logout = () => {
         localStorage.clear();
         navigate('/admin-login');
@@ -81,8 +91,9 @@ function AdminDashboard() {
         section: { marginBottom: '3rem' },
         sectionHeader: { fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: THEME.textMain },
         cardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' },
-        classCard: { background: THEME.cardBg, borderRadius: '12px', padding: '1.5rem', border: `1px solid ${THEME.border}`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+        classCard: { background: THEME.cardBg, borderRadius: '12px', padding: '1.5rem', border: `1px solid ${THEME.border}`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', position: 'relative' },
         classId: { fontSize: '1.5rem', fontWeight: '800', color: THEME.primary },
+        deleteBtn: { position: 'absolute', top: '1rem', right: '1rem', background: '#fee2e2', color: THEME.danger, border: 'none', borderRadius: '6px', padding: '0.4rem 0.6rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600', transition: 'background 0.2s' },
         actionBtn: { padding: '0.6rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem', transition: 'filter 0.2s' },
         table: { width: '100%', borderCollapse: 'collapse', background: THEME.cardBg, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
         th: { textAlign: 'left', padding: '1rem', background: '#f1f5f9', color: THEME.textMuted, fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '700' },
@@ -117,6 +128,7 @@ function AdminDashboard() {
                             >
                                 <div style={styles.classId}>{c}</div>
                                 <div style={{ color: THEME.textMuted, fontSize: '0.9rem' }}>Click to edit timetable →</div>
+                                <button onClick={(e) => handleDeleteClass(e, c)} style={styles.deleteBtn} title="Delete Class">🗑️</button>
                             </div>
                         ))}
                     </div>
@@ -267,3 +279,4 @@ function AddClassForm({ onCancel, onSuccess }) {
 }
 
 export default AdminDashboard;
+

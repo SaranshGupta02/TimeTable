@@ -217,6 +217,35 @@ app.post('/api/admin/classes', authMiddleware, adminMiddleware, async (req, res)
   }
 });
 
+app.delete('/api/admin/classes/:classId', authMiddleware, adminMiddleware, async (req, res) => {
+  const { classId } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Manual Cascade: Delete slots first
+    await client.query('DELETE FROM timetable_slots WHERE class_id = $1', [classId]);
+
+    // Delete the class
+    const result = await client.query('DELETE FROM timetable_classes WHERE class_id = $1', [classId]);
+
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Class not found' });
+    }
+
+    await client.query('COMMIT');
+    console.log(`Class ${classId} deleted`);
+    res.json({ success: true, message: `Class ${classId} deleted successfully` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Delete Class Error:', err);
+    res.status(500).json({ error: 'Failed to delete class' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/admin/reset-db', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const client = await pool.connect();

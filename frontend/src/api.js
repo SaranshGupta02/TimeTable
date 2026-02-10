@@ -1,5 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || 'https://timetable-fzoe.onrender.com/api';
-
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 function getToken() {
   return localStorage.getItem('token');
 }
@@ -27,14 +26,18 @@ export async function register(formData) {
 }
 
 export async function getClasses() {
-  const res = await fetch(`${BASE}/classes`);
+  const res = await fetch(`${BASE}/classes`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to load classes');
   return data.classes;
 }
 
 export async function getTimetable(classId) {
-  const res = await fetch(`${BASE}/timetable/${classId}`);
+  const res = await fetch(`${BASE}/timetable/${classId}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to load timetable');
   return data;
@@ -80,16 +83,26 @@ export async function approveUser(userId, approve) {
   return data;
 }
 
-export async function createClass(classId) {
+export async function createClass(classId, days, periods, timeSlots) {
   const res = await fetch(`${BASE}/admin/classes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ classId }),
+    body: JSON.stringify({ classId, days, periods, timeSlots }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to create class');
+  return data;
+}
+
+export async function resetDb() {
+  const res = await fetch(`${BASE}/admin/reset-db`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to reset database');
   return data;
 }

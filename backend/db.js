@@ -37,12 +37,24 @@ async function initDb() {
       );
     `);
 
-    // Classes Table
+    // Classes Table - Create if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS timetable_classes (
-        class_id VARCHAR(50) PRIMARY KEY
+        class_id VARCHAR(50) PRIMARY KEY,
+        days TEXT,
+        periods INTEGER DEFAULT 8,
+        time_slots TEXT
       );
     `);
+
+    // Migration attempt for existing tables missing new columns
+    try {
+      await client.query('ALTER TABLE timetable_classes ADD COLUMN IF NOT EXISTS days TEXT');
+      await client.query('ALTER TABLE timetable_classes ADD COLUMN IF NOT EXISTS periods INTEGER DEFAULT 8');
+      await client.query('ALTER TABLE timetable_classes ADD COLUMN IF NOT EXISTS time_slots TEXT');
+    } catch (e) {
+      console.log('Migration columns likely exist or error ignored:', e.message);
+    }
 
     // Slots Table
     await client.query(`
@@ -108,6 +120,8 @@ async function initDb() {
   }
 }
 
+// Initialize on start
 initDb();
 
+export { initDb };
 export default pool;

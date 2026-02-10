@@ -3,7 +3,7 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import pool from './db.js';
+import pool, { initDb } from './db.js';
 
 dotenv.config();
 
@@ -151,8 +151,20 @@ app.post('/api/admin/approve', authMiddleware, adminMiddleware, async (req, res)
 });
 
 app.post('/api/admin/classes', authMiddleware, adminMiddleware, async (req, res) => {
-  const { classId } = req.body;
+  // days is expected to be an array of strings like ["Monday", "Tuesday", ...]
+  // periods is expected to be a number (e.g. 8)
+  // timeSlots is expected to be an array of strings like ["09:00-10:00", ...]
+  const { classId, days, periods, timeSlots } = req.body;
+  console.log('Creating class:', { classId, days, periods, timeSlots });
+
   if (!classId) return res.status(400).json({ error: 'classId is required' });
+
+  // Default values if not provided (fallback for existing logic)
+  const daysArray = days && days.length > 0 ? days : DAYS;
+  const numPeriods = periods ? parseInt(periods) : PERIODS;
+  // Default time slots calculation if not provided
+  const timeSlotsArray = timeSlots && timeSlots.length > 0 ? timeSlots :
+    Array.from({ length: numPeriods }, (_, i) => `${i + 9}:00 - ${i + 10}:00`);
 
   const client = await pool.connect();
   try {
@@ -164,7 +176,11 @@ app.post('/api/admin/classes', authMiddleware, adminMiddleware, async (req, res)
       return res.status(400).json({ error: 'Class already exists' });
     }
 
-    await client.query('INSERT INTO timetable_classes (class_id) VALUES ($1)', [classId]);
+    // Store days and time_slots as JSON strings
+    await client.query(
+      'INSERT INTO timetable_classes (class_id, days, periods, time_slots) VALUES ($1, $2, $3, $4)',
+      [classId, JSON.stringify(daysArray), numPeriods, JSON.stringify(timeSlotsArray)]
+    );
 
     // Batch Insert Slots
     const initDept = 'Common';
@@ -172,8 +188,8 @@ app.post('/api/admin/classes', authMiddleware, adminMiddleware, async (req, res)
     let placeholders = [];
     let counter = 1;
 
-    for (let p = 0; p < PERIODS; p++) {
-      for (let d = 0; d < 5; d++) {
+    for (let p = 0; p < numPeriods; p++) {
+      for (let d = 0; d < daysArray.length; d++) {
         placeholders.push(`($${counter++}, $${counter++}, $${counter++}, $${counter++}, '')`);
         values.push(classId, p, d, initDept);
       }
@@ -184,22 +200,45 @@ app.post('/api/admin/classes', authMiddleware, adminMiddleware, async (req, res)
       VALUES ${placeholders.join(', ')}
     `;
 
-    await client.query(query, values);
+    if (values.length > 0) {
+      await client.query(query, values);
+    }
+
     await client.query('COMMIT');
+    console.log(`Class ${classId} created with ${daysArray.length} days and ${numPeriods} periods`);
 
     res.json({ success: true, classId });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error(err);
+    console.error('Create Class Error:', err);
     res.status(500).json({ error: 'Failed to create class' });
   } finally {
     client.release();
   }
 });
 
+app.post('/api/admin/reset-db', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const client = await pool.connect();
+    try {
+      console.log('Resetting database...');
+      await client.query('DROP TABLE IF EXISTS timetable_slots CASCADE');
+      await client.query('DROP TABLE IF EXISTS timetable_classes CASCADE');
+      console.log('Tables dropped. Re-initializing...');
+      await initDb();
+      res.json({ success: true, message: 'Database reset successfully' });
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Reset DB Error:', err);
+    res.status(500).json({ error: 'Failed to reset database' });
+  }
+});
+
 // --- Timetable Routes ---
 
-app.get('/api/classes', async (req, res) => {
+app.get('/api/classes', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT class_id FROM timetable_classes');
     const classes = rows.map(r => r.class_id);
@@ -209,13 +248,20 @@ app.get('/api/classes', async (req, res) => {
   }
 });
 
-app.get('/api/timetable/:classId', async (req, res) => {
+app.get('/api/timetable/:classId', authMiddleware, async (req, res) => {
   const { classId } = req.params;
 
   try {
-    // Verify class exists
-    const { rows: clsRows } = await pool.query('SELECT class_id FROM timetable_classes WHERE class_id = $1', [classId]);
+    // Verify class exists and get config
+    const { rows: clsRows } = await pool.query('SELECT class_id, days, periods, time_slots FROM timetable_classes WHERE class_id = $1', [classId]);
     if (clsRows.length === 0) return res.status(404).json({ error: 'Class not found' });
+
+    const classInfo = clsRows[0];
+    // Parse days/time_slots if stored as JSON string
+    let classDays = classInfo.days ? JSON.parse(classInfo.days) : DAYS;
+    let classPeriods = classInfo.periods || PERIODS;
+    let classTimeSlots = classInfo.time_slots ? JSON.parse(classInfo.time_slots) :
+      Array.from({ length: classPeriods }, (_, i) => `${i + 9}:00 - ${i + 10}:00`);
 
     // Fetch slots
     const { rows } = await pool.query(`
@@ -226,24 +272,21 @@ app.get('/api/timetable/:classId', async (req, res) => {
 
     // Reconstruct grid
     const grid = [];
-    for (let p = 0; p < PERIODS; p++) {
+    for (let p = 0; p < classPeriods; p++) {
       const row = [];
-      for (let d = 0; d < 5; d++) {
-        row.push({ department: '', subject: '' });
+      for (let d = 0; d < classDays.length; d++) {
+        // Find slot
+        const slot = rows.find(r => r.period_index === p && r.day_index === d);
+        row.push({
+          department: slot ? slot.department : 'Common',
+          subject: slot ? slot.subject : ''
+        });
       }
       grid.push(row);
     }
 
-    for (const row of rows) {
-      if (grid[row.period_index] && grid[row.period_index][row.day_index]) {
-        grid[row.period_index][row.day_index] = {
-          department: row.department,
-          subject: row.subject
-        };
-      }
-    }
 
-    res.json({ classId, days: DAYS, periods: PERIODS, grid });
+    res.json({ classId, days: classDays, periods: classPeriods, grid, time_slots: classTimeSlots });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch timetable' });

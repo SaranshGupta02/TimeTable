@@ -56,34 +56,67 @@ export default function Timetable() {
     getTimetable(classId).then(setData).catch(e => showNotification(e.message, 'error')).finally(() => setLoading(false));
   }, [classId]);
 
+  // const downloadPDF = async () => {
+  //   const element = document.getElementById('timetable-grid');
+  //   if (!element) return;
+  //   try {
+  //     html2canvas(element, {
+  //       scale: 3,
+  //       useCORS: true,
+  //       backgroundColor: '#ffffff', // Force white background for PDF
+  //       logging: false
+  //     });
+
+  //     const imgData = canvas.toDataURL('image/png');
+  //     const pdf = new jsPDF('l', 'mm', 'a4');
+  //     const pdfWidth = pdf.internal.pageSize.getWidth();
+  //     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  //     pdf.setFontSize(18);
+  //     pdf.setTextColor(15, 23, 42); // Dark slate
+  //     pdf.text(`Timetable - ${classId}`, 10, 10);
+
+  //     pdf.addImage(imgData, 'PNG', 0, 15, pdfWidth, pdfHeight);
+  //     pdf.save(`timetable-${classId}.pdf`);
+  //     showNotification('Downloaded successfully', 'success');
+  //   } catch (err) {
+  //     console.error(err);
+  //     showNotification('Failed to download PDF', 'error');
+  //   }
+  // };
   const downloadPDF = async () => {
-    const element = document.getElementById('timetable-grid');
-    if (!element) return;
-    try {
-      html2canvas(element, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#ffffff', // Force white background for PDF
-        logging: false
-      });
+  const element = document.getElementById('timetable-grid');
+  if (!element) return;
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+  try {
+    // 👇 YOU MISSED THIS LINE
+    const canvas = await html2canvas(element, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    });
 
-      pdf.setFontSize(18);
-      pdf.setTextColor(15, 23, 42); // Dark slate
-      pdf.text(`Timetable - ${classId}`, 10, 10);
+    const imgData = canvas.toDataURL('image/png');
 
-      pdf.addImage(imgData, 'PNG', 0, 15, pdfWidth, pdfHeight);
-      pdf.save(`timetable-${classId}.pdf`);
-      showNotification('Downloaded successfully', 'success');
-    } catch (err) {
-      console.error(err);
-      showNotification('Failed to download PDF', 'error');
-    }
-  };
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.setFontSize(18);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(`Timetable - ${classId}`, 10, 10);
+
+    pdf.addImage(imgData, 'PNG', 0, 15, pdfWidth, pdfHeight);
+    pdf.save(`timetable-${classId}.pdf`);
+
+    showNotification('Downloaded successfully', 'success');
+  } catch (err) {
+    console.error(err);
+    showNotification('Failed to download PDF', 'error');
+  }
+};
+
 
   async function saveSlot() {
     if (editing == null) return;
@@ -305,6 +338,22 @@ export default function Timetable() {
                                   <option value="Compiler Design" />
                                   <option value="Theory of Computation" />
                                   <option value="Web Technologies" />
+                                  <option value="Mobile App Development" />
+                                  <option value="Artificial Intelligence" />
+                                  <option value="Data Science" />
+                                  <option value="Cloud Computing" />
+                                  <option value="Cyber Security" />
+                                  <option value="Human-Computer Interaction" />
+                                  <option value="Digital Signal Processing" />
+                                  <option value="Microprocessors" />
+                                  <option value="Embedded Systems" />
+                                  <option value="Computer Graphics" />
+                                  <option value="Distributed Computing Computing" />
+                                  <option value="Computer Networks" />
+                                  <option value="Deep Learning" />
+                                  <option value="Natural Language Processing" />
+                                  <option value="Software Engineering" />
+                                  
                                 </datalist>
                               </>
                             )}

@@ -184,7 +184,7 @@ export default function Timetable() {
 
     cellContent: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' },
     subject: { fontWeight: '700', fontSize: '1rem', color: THEME.primary },
-    hint: { fontSize: '0.85rem', color: THEME.primaryLight, fontWeight: '500', color: THEME.primary },
+    hint: { fontSize: '0.85rem', color: THEME.primaryLight, fontWeight: '500'},
     empty: { color: '#cbd5e1' },
 
     editCard: { background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', zIndex: 10, position: 'relative', border: `1px solid ${THEME.border}` },

@@ -200,7 +200,7 @@ function AddClassForm({ onCancel, onSuccess }) {
     const [days, setDays] = useState(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
     const [timeSlots, setTimeSlots] = useState([]);
 
-    const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     useEffect(() => {
         setTimeSlots(prev => {

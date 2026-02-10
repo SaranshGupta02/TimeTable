@@ -6,6 +6,7 @@ import { login as apiLogin } from './api';
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -50,12 +51,35 @@ function Login() {
         </div>
         <div className="form-group">
           <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              style={{ paddingRight: '2.5rem' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#64748b',
+                padding: 0,
+                marginTop: 0,
+                boxShadow: 'none',
+                width: 'auto'
+              }}
+            >
+              {showPassword ? '👁️' : '🙈'}
+            </button>
+          </div>
         </div>
         <button type="submit">Login</button>
       </form>

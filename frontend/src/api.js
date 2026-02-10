@@ -1,6 +1,22 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+console.log('API BASE URL:', BASE); // Debugging
+
 function getToken() {
   return localStorage.getItem('token');
+}
+
+// Helper to handle response
+async function handleResponse(res) {
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.indexOf("application/json") !== -1) {
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+    return data;
+  } else {
+    const text = await res.text();
+    if (!res.ok) throw new Error(`Server Error (${res.status}): ${text.slice(0, 100)}...`);
+    return { message: 'Success' }; // Fallback for empty ok responses
+  }
 }
 
 export async function login(email, password) {
@@ -9,9 +25,7 @@ export async function login(email, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
-  return data;
+  return handleResponse(res);
 }
 
 export async function register(formData) {
@@ -20,17 +34,14 @@ export async function register(formData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Registration failed');
-  return data;
+  return handleResponse(res);
 }
 
 export async function getClasses() {
   const res = await fetch(`${BASE}/classes`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load classes');
+  const data = await handleResponse(res);
   return data.classes;
 }
 
@@ -38,14 +49,12 @@ export async function getTimetable(classId) {
   const res = await fetch(`${BASE}/timetable/${classId}`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load timetable');
-  return data;
+  return handleResponse(res);
 }
 
 export async function updateSlot(classId, dayIndex, periodIndex, subject, department) {
   const body = { dayIndex, periodIndex, subject };
-  if (department) body.department = department; // Optional for admin structure change
+  if (department) body.department = department;
 
   const res = await fetch(`${BASE}/timetable/${classId}/slot`, {
     method: 'PUT',
@@ -55,17 +64,14 @@ export async function updateSlot(classId, dayIndex, periodIndex, subject, depart
     },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Update failed');
-  return data;
+  return handleResponse(res);
 }
 
 export async function getUsers() {
   const res = await fetch(`${BASE}/admin/users`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to fetch users');
+  const data = await handleResponse(res);
   return data.users;
 }
 
@@ -78,9 +84,7 @@ export async function approveUser(userId, approve) {
     },
     body: JSON.stringify({ userId, approve }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Action failed');
-  return data;
+  return handleResponse(res);
 }
 
 export async function createClass(classId, days, periods, timeSlots) {
@@ -92,17 +96,13 @@ export async function createClass(classId, days, periods, timeSlots) {
     },
     body: JSON.stringify({ classId, days, periods, timeSlots }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to create class');
-  return data;
+  return handleResponse(res);
 }
 
-export async function resetDb() {
-  const res = await fetch(`${BASE}/admin/reset-db`, {
-    method: 'POST',
+export async function deleteClass(classId) {
+  const res = await fetch(`${BASE}/admin/classes/${classId}`, {
+    method: 'DELETE',
     headers: { Authorization: `Bearer ${getToken()}` },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to reset database');
-  return data;
+  return handleResponse(res);
 }

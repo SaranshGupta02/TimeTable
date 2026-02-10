@@ -12,7 +12,7 @@ function Login() {
 
   React.useEffect(() => {
     if (user) {
-      navigate(user.role === 'admin' ? '/admin' : '/timetable');
+      navigate(user.role === 'admin' ? '/admin' : '/timetable', { replace: true });
     }
   }, [user, navigate]);
 
@@ -25,9 +25,9 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.user.role === 'admin') {
-        navigate('/admin');
+        navigate('/admin', { replace: true });
       } else {
-        navigate('/timetable');
+        navigate('/timetable', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Login failed. Ensure backend is running.');

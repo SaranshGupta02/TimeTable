@@ -81,7 +81,8 @@ function AdminDashboard() {
 
     const logout = () => {
         localStorage.clear();
-        navigate('/admin-login');
+        // Force reload to ensure all state is wiped
+        window.location.href = '/admin-login';
     };
 
     const styles = {

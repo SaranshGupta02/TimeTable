@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { login as apiLogin } from './api';
 
@@ -7,8 +7,14 @@ function AdminLogin() {
     const [email, setEmail] = useState('admin@nitkkr.ac.in');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const { login } = useAuth();
+    const { login, user } = useAuth();
     const navigate = useNavigate();
+
+    React.useEffect(() => {
+        if (user?.role === 'admin') {
+            navigate('/admin', { replace: true });
+        }
+    }, [user, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -21,7 +27,7 @@ function AdminLogin() {
             }
             login(data.user, data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            navigate('/admin');
+            navigate('/admin', { replace: true });
         } catch (err) {
             setError(err.message || 'Login failed. Ensure backend is running.');
         }
@@ -53,9 +59,9 @@ function AdminLogin() {
                 <button type="submit" className="admin-btn">Access Dashboard</button>
             </form>
             <div className="auth-footer">
-                <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
+                <Link to="/" style={{ textDecoration: 'none', color: '#64748b', fontWeight: '500' }}>
                     ← Back to Professor Login
-                </a>
+                </Link>
             </div>
         </div>
     );

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { login as apiLogin } from './api';
-
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 function AdminLogin() {
     const [email, setEmail] = useState('admin@nitkkr.ac.in');
     const [password, setPassword] = useState('');
@@ -76,7 +76,9 @@ function AdminLogin() {
                                 width: 'auto'
                             }}
                         >
-                            {showPassword ? '👁️' : '🙈'}
+                            
+                                          {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                          
                         </button>
                     </div>
                 </div>

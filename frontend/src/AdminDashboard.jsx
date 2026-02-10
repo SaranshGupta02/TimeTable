@@ -244,7 +244,7 @@ function AddClassForm({ onCancel, onSuccess }) {
 
             <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#64748b' }}>Periods: {periods}</label>
-                <input type="range" min="4" max="12" value={periods} onChange={e => setPeriods(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="1" max="12" value={periods} onChange={e => setPeriods(Number(e.target.value))} style={{ width: '100%' }} />
             </div>
 
             <div>

@@ -1,44 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { login as apiLogin } from './api';
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useNotification } from './NotificationContext';
+import { login as apiLogin, pingBackend } from './api';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState('unknown'); // 'unknown' | 'cold' | 'warm'
   const { login, user } = useAuth();
+  const { showNotification, dismissByMessage } = useNotification();
   const navigate = useNavigate();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
-      navigate(user.role === 'admin' ? '/admin' : '/timetable', { replace: true });
+      navigate(user.role === 'admin' ? '/admin' : '/timetable');
     }
   }, [user, navigate]);
 
+  // Ping backend to detect cold start
+  useEffect(() => {
+    let pingNotifId = null;
+    const checkBackend = async () => {
+      // Give a 2s delay before showing "warming up" to avoid false alarm on fast loads
+      const notifTimer = setTimeout(() => {
+        showNotification(
+          '🔄 Connecting to server... (first load may take ~20s on free tier)',
+          'loading',
+          { persistent: true }
+        );
+        setServerStatus('cold');
+      }, 2000);
+
+      const isAlive = await pingBackend();
+
+      clearTimeout(notifTimer);
+      dismissByMessage('🔄 Connecting to server... (first load may take ~20s on free tier)');
+
+      if (isAlive) {
+        setServerStatus('warm');
+      } else {
+        setServerStatus('cold');
+        showNotification('⚠️ Server is slow to respond. Login may take a moment.', 'warning', { duration: 5000 });
+      }
+    };
+
+    checkBackend();
+  }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
       const data = await apiLogin(email, password);
-
       login(data.user, data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      showNotification(`Welcome back, ${data.user.name || data.user.email.split('@')[0]}! 👋`, 'success');
 
       if (data.user.role === 'admin') {
-        navigate('/admin', { replace: true });
+        navigate('/admin');
       } else {
-        navigate('/timetable', { replace: true });
+        navigate('/timetable');
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Ensure backend is running.');
+      setError(err.message || 'Login failed. Please check your credentials.');
+      showNotification(err.message || 'Login failed', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-container">
-      <h2>Timetable Login</h2>
-      {error && <div className="error">{error}</div>}
+      <div className="auth-logo">📅</div>
+      <h2>Sign In</h2>
+      <p className="auth-subtitle">NIT Kurukshetra · Timetable System</p>
+
+      {serverStatus === 'cold' && (
+        <div className="server-status-banner">
+          <span className="status-dot pulsing" />
+          Server warming up — login may take up to 20 seconds
+        </div>
+      )}
+
+      {error && (
+        <div className="error">
+          <span>⚠️</span>
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleLogin}>
         <div className="form-group">
           <label>Email</label>
@@ -46,47 +103,47 @@ function Login() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@nitkkr.ac.in"
             required
+            disabled={loading}
           />
         </div>
         <div className="form-group">
           <label>Password</label>
           <div style={{ position: 'relative' }}>
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{ paddingRight: '2.5rem' }}
+              disabled={loading}
+              style={{ paddingRight: '2.8rem' }}
+              placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#64748b',
-                padding: 0,
-                marginTop: 0,
-                boxShadow: 'none',
-                width: 'auto'
-              }}
+              className="password-toggle"
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
         </div>
-        <button type="submit">Login</button>
+
+        <button type="submit" disabled={loading} className={loading ? 'btn-loading' : ''}>
+          {loading ? (
+            <>
+              <span className="btn-spinner" />
+              Signing in...
+            </>
+          ) : 'Sign In'}
+        </button>
       </form>
+
       <div className="auth-footer">
         <p>New Professor? <Link to="/register">Register here</Link></p>
         <div className="separator">or</div>
-        <Link to="/admin-login" className="admin-link">Access Admin Portal</Link>
+        <Link to="/admin-login" className="admin-link">Access Admin Portal →</Link>
       </div>
     </div>
   );

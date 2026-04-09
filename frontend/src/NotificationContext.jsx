@@ -1,75 +1,63 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 const NotificationContext = createContext();
 
 export function useNotification() {
-    return useContext(NotificationContext);
+  return useContext(NotificationContext);
 }
 
 export function NotificationProvider({ children }) {
-    const [toasts, setToasts] = useState([]);
+  const [toasts, setToasts] = useState([]);
+  const persistentRef = useRef({});
 
-    const showNotification = useCallback((message, type = 'info') => {
-        const id = Date.now() + Math.random();
-        setToasts(prev => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
-        }, 3000);
-    }, []);
+  const showNotification = useCallback((message, type = 'info', options = {}) => {
+    const id = Date.now() + Math.random();
+    const persistent = options.persistent || false;
+    const duration = options.duration || 4000;
 
-    const removeToast = (id) => {
+    setToasts(prev => [...prev, { id, message, type, persistent, loading: type === 'loading' }]);
+
+    if (!persistent) {
+      setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id));
-    };
-
-    return (
-        <NotificationContext.Provider value={{ showNotification }}>
-            {children}
-            <div style={styles.toastContainer}>
-                {toasts.map(t => (
-                    <div key={t.id} style={{ ...styles.toast, ...styles[t.type] }}>
-                        <span>{t.message}</span>
-                        <button onClick={() => removeToast(t.id)} style={styles.closeBtn}>×</button>
-                    </div>
-                ))}
-            </div>
-        </NotificationContext.Provider>
-    );
-}
-
-const styles = {
-    toastContainer: {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        zIndex: 9999,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-    },
-    toast: {
-        minWidth: '250px',
-        padding: '16px',
-        borderRadius: '8px',
-        color: 'white',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        animation: 'slideIn 0.3s ease-out',
-        fontSize: '0.9rem',
-        fontWeight: '500',
-    },
-    info: { background: '#3b82f6', borderLeft: '4px solid #1d4ed8' },
-    success: { background: '#10b981', borderLeft: '4px solid #047857' },
-    error: { background: '#ef4444', borderLeft: '4px solid #b91c1c' },
-    warning: { background: '#f59e0b', borderLeft: '4px solid #b45309' },
-    closeBtn: {
-        background: 'none',
-        border: 'none',
-        color: 'white',
-        fontSize: '1.2rem',
-        cursor: 'pointer',
-        marginLeft: '10px',
-        opacity: 0.8,
+      }, duration);
+    } else {
+      persistentRef.current[message] = id;
     }
-};
+
+    return id;
+  }, []);
+
+  const dismissNotification = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const dismissByMessage = useCallback((message) => {
+    const id = persistentRef.current[message];
+    if (id) {
+      setToasts(prev => prev.filter(t => t.id !== id));
+      delete persistentRef.current[message];
+    }
+  }, []);
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  return (
+    <NotificationContext.Provider value={{ showNotification, dismissNotification, dismissByMessage }}>
+      {children}
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast toast-${t.type}`}>
+            <div className="toast-body">
+              {t.loading && <span className="toast-spinner" />}
+              <span>{t.message}</span>
+            </div>
+            <button onClick={() => removeToast(t.id)} className="toast-close">×</button>
+          </div>
+        ))}
+      </div>
+    </NotificationContext.Provider>
+  );
+}

@@ -1,26 +1,51 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-console.log('API BASE URL:', BASE); // Debugging
 
 function getToken() {
   return localStorage.getItem('token');
 }
 
-// Helper to handle response
+// Helper with timeout support
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out. The server may be starting up — please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function handleResponse(res) {
-  const contentType = res.headers.get("content-type");
-  if (contentType && contentType.indexOf("application/json") !== -1) {
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
     return data;
   } else {
     const text = await res.text();
-    if (!res.ok) throw new Error(`Server Error (${res.status}): ${text.slice(0, 100)}...`);
-    return { message: 'Success' }; // Fallback for empty ok responses
+    if (!res.ok) throw new Error(`Server Error (${res.status}): ${text.slice(0, 100)}`);
+    return { message: 'Success' };
+  }
+}
+
+// Ping backend for cold-start detection
+export async function pingBackend() {
+  try {
+    const res = await fetchWithTimeout(`${BASE}/health`, {}, 20000);
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
 export async function login(email, password) {
-  const res = await fetch(`${BASE}/auth/login`, {
+  const res = await fetchWithTimeout(`${BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -29,7 +54,7 @@ export async function login(email, password) {
 }
 
 export async function register(formData) {
-  const res = await fetch(`${BASE}/auth/register`, {
+  const res = await fetchWithTimeout(`${BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData),
@@ -38,7 +63,7 @@ export async function register(formData) {
 }
 
 export async function getClasses() {
-  const res = await fetch(`${BASE}/classes`, {
+  const res = await fetchWithTimeout(`${BASE}/classes`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
   const data = await handleResponse(res);
@@ -46,7 +71,7 @@ export async function getClasses() {
 }
 
 export async function getTimetable(classId) {
-  const res = await fetch(`${BASE}/timetable/${classId}`, {
+  const res = await fetchWithTimeout(`${BASE}/timetable/${classId}`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
   return handleResponse(res);
@@ -55,8 +80,7 @@ export async function getTimetable(classId) {
 export async function updateSlot(classId, dayIndex, periodIndex, subject, department) {
   const body = { dayIndex, periodIndex, subject };
   if (department) body.department = department;
-
-  const res = await fetch(`${BASE}/timetable/${classId}/slot`, {
+  const res = await fetchWithTimeout(`${BASE}/timetable/${classId}/slot`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -68,7 +92,7 @@ export async function updateSlot(classId, dayIndex, periodIndex, subject, depart
 }
 
 export async function getUsers() {
-  const res = await fetch(`${BASE}/admin/users`, {
+  const res = await fetchWithTimeout(`${BASE}/admin/users`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
   const data = await handleResponse(res);
@@ -76,7 +100,7 @@ export async function getUsers() {
 }
 
 export async function approveUser(userId, approve) {
-  const res = await fetch(`${BASE}/admin/approve`, {
+  const res = await fetchWithTimeout(`${BASE}/admin/approve`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -88,7 +112,7 @@ export async function approveUser(userId, approve) {
 }
 
 export async function createClass(classId, days, periods, timeSlots) {
-  const res = await fetch(`${BASE}/admin/classes`, {
+  const res = await fetchWithTimeout(`${BASE}/admin/classes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -100,9 +124,28 @@ export async function createClass(classId, days, periods, timeSlots) {
 }
 
 export async function deleteClass(classId) {
-  const res = await fetch(`${BASE}/admin/classes/${classId}`, {
+  const res = await fetchWithTimeout(`${BASE}/admin/classes/${classId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${getToken()}` },
   });
   return handleResponse(res);
+}
+
+export async function searchTimetable(query) {
+  const res = await fetchWithTimeout(`${BASE}/search?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  const data = await handleResponse(res);
+  return data.results;
+}
+
+export async function getStats() {
+  const res = await fetchWithTimeout(`${BASE}/stats`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return handleResponse(res);
+}
+
+export function getExportUrl(classId) {
+  return `${BASE}/timetable/${classId}/export?token=${getToken()}`;
 }

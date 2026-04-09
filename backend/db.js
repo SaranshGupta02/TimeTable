@@ -1,6 +1,6 @@
 import pkg from 'pg';
 import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv'; // Ensure dotenv is loaded if this file is imported first
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -10,13 +10,20 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  // Production-ready pool tuning
+  max: 10,               // max concurrent connections
+  idleTimeoutMillis: 30000,  // close idle connections after 30s
+  connectionTimeoutMillis: 5000, // fail fast if can't connect in 5s
 });
 
-// Test connection
+// Test connection on startup
 pool.connect()
-  .then(() => console.log('Connected to Neon PostgreSQL'))
-  .catch(err => console.error('Connection error', err.stack));
+  .then(client => {
+    console.log('✅ Connected to Neon PostgreSQL');
+    client.release();
+  })
+  .catch(err => console.error('❌ Connection error', err.stack));
 
 async function initDb() {
   const client = await pool.connect();
@@ -37,7 +44,7 @@ async function initDb() {
       );
     `);
 
-    // Classes Table - Create if not exists
+    // Classes Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS timetable_classes (
         class_id VARCHAR(50) PRIMARY KEY,
@@ -47,13 +54,13 @@ async function initDb() {
       );
     `);
 
-    // Migration attempt for existing tables missing new columns
+    // Migration for existing tables
     try {
       await client.query('ALTER TABLE timetable_classes ADD COLUMN IF NOT EXISTS days TEXT');
       await client.query('ALTER TABLE timetable_classes ADD COLUMN IF NOT EXISTS periods INTEGER DEFAULT 8');
       await client.query('ALTER TABLE timetable_classes ADD COLUMN IF NOT EXISTS time_slots TEXT');
     } catch (e) {
-      console.log('Migration columns likely exist or error ignored:', e.message);
+      console.log('Migration columns likely exist:', e.message);
     }
 
     // Slots Table
@@ -69,8 +76,14 @@ async function initDb() {
       );
     `);
 
-    // Indexes
+    // --- Indexes for performance ---
     await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_slots_class ON timetable_slots(class_id);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_slots_dept ON timetable_slots(department);');
+    // Full-text search index on subject
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_slots_subject ON timetable_slots USING gin(to_tsvector('english', COALESCE(subject, '')));
+    `);
 
     // Seed Admin
     const { rows: adminRows } = await client.query('SELECT id FROM users WHERE email = $1', ['admin@nitkkr.ac.in']);
@@ -112,9 +125,10 @@ async function initDb() {
     }
 
     await client.query('COMMIT');
+    console.log('✅ Database initialized');
   } catch (e) {
     await client.query('ROLLBACK');
-    console.error('Failed to initialize DB', e);
+    console.error('❌ Failed to initialize DB', e);
   } finally {
     client.release();
   }

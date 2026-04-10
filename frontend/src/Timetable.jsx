@@ -8,6 +8,38 @@ import html2canvas from 'html2canvas';
 import SearchBar from './SearchBar';
 import StatsPanel from './StatsPanel';
 
+// ── NIT KKR Department full names ─────────────────────────────────────────────
+const DEPT_FULL_NAME = {
+  CSE:     'DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING',
+  ECE:     'DEPARTMENT OF ELECTRONICS & COMMUNICATION ENGINEERING',
+  MECH:    'DEPARTMENT OF MECHANICAL ENGINEERING',
+  MATH:    'DEPARTMENT OF MATHEMATICS',
+  PHYSICS: 'DEPARTMENT OF PHYSICS',
+  Common:  'DEPARTMENT OF COMPUTER ENGINEERING',
+  MCA:     'DEPARTMENT OF COMPUTER ENGINEERING',
+};
+
+// ── Room/Block mapping by department ─────────────────────────────────────────
+const DEPT_ROOM = {
+  CSE:     'CSE Block Room No. 101',
+  ECE:     'ECE Block Room No. 201',
+  MECH:    'Mechanical Block Room No. 301',
+  MATH:    'Mathematics Block Room No. 401',
+  PHYSICS: 'Physics Block Room No. 501',
+  Common:  'MCA Block Room No. 306',
+  MCA:     'MCA Block Room No. 306',
+};
+
+const CURRENT_SEMESTER = 'EVEN SEMESTER 2024-25';
+
+// Derive dominant department from grid
+function getDominantDept(grid) {
+  const counts = {};
+  grid.flat().forEach(c => { if (c.department && c.department !== 'Common') counts[c.department] = (counts[c.department]||0)+1; });
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  return top ? top[0] : 'Common';
+}
+
 // ── Palettes ──────────────────────────────────────────────────────────────────
 const DEPT_PALETTE = {
   CSE:     { bg: '#e8f4fd', border: '#3b9ede', text: '#1a5f8a', dot: '#3b9ede' },
@@ -131,19 +163,119 @@ export default function Timetable() {
   }
 
   const downloadPDF = async () => {
-    const el = document.getElementById('timetable-grid');
-    if (!el) return;
-    showNotification('Generating PDF…', 'loading', { duration: 5000 });
+    if (!data) return;
+    showNotification('Generating PDF…', 'loading', { duration: 8000 });
     try {
-      const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false });
       const pdf = new jsPDF('l', 'mm', 'a4');
-      const w   = pdf.internal.pageSize.getWidth();
-      pdf.setFontSize(14); pdf.setTextColor(15, 23, 42);
-      pdf.text(`Timetable — Class ${classId}`, 10, 10);
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 16, w, (canvas.height * w) / canvas.width);
-      pdf.save(`timetable-${classId}.pdf`);
+      const pgW = pdf.internal.pageSize.getWidth();   // 297mm
+      const pgH = pdf.internal.pageSize.getHeight();  // 210mm
+      const margin = 12;
+
+      // ── Determine department / room info ──
+      const dominantDept  = getDominantDept(grid);
+      const deptFullName  = DEPT_FULL_NAME[dominantDept]  || DEPT_FULL_NAME.Common;
+      const roomInfo      = DEPT_ROOM[dominantDept]       || DEPT_ROOM.Common;
+      const blockLabel    = `${roomInfo.split(' ')[0]} BLOCK LAB TIME TABLE FOR ${CURRENT_SEMESTER}`;
+
+      // ── Logo ──
+      let logoY = 8;
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((res, rej) => {
+          img.onload = res; img.onerror = rej;
+          img.src = '/logo.png';
+        });
+        const c2 = document.createElement('canvas');
+        c2.width = img.naturalWidth; c2.height = img.naturalHeight;
+        c2.getContext('2d').drawImage(img, 0, 0);
+        const logoData = c2.toDataURL('image/png');
+        const logoSize = 22;
+        pdf.addImage(logoData, 'PNG', margin, logoY, logoSize, logoSize);
+      } catch (_) { /* skip logo if load fails */ }
+
+      // ── Header text ──
+      const textX = pgW / 2;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.setTextColor(20, 20, 60);
+      pdf.text(deptFullName, textX, 13, { align: 'center' });
+
+      pdf.setFontSize(10);
+      pdf.text('NATIONAL INSTITUTE OF TECHNOLOGY, KURUKSHETRA', textX, 19, { align: 'center' });
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text(roomInfo, textX, 25, { align: 'center' });
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.text(blockLabel, textX, 31, { align: 'center' });
+
+      // ── Divider ──
+      pdf.setDrawColor(40, 40, 100);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, 34, pgW - margin, 34);
+
+      // ── Timetable table ──
+      const tableTop = 38;
+      const colW0 = 18;  // Day column
+      const usableW = pgW - margin * 2 - colW0;
+      const numPeriods = timeSlots.length || 8;
+      const colW = usableW / numPeriods;
+      const rowH = (pgH - tableTop - 18) / days.length;
+
+      const drawCell = (x, y, w2, h2, text, opts = {}) => {
+        pdf.setDrawColor(180, 180, 210);
+        pdf.setLineWidth(0.3);
+        pdf.rect(x, y, w2, h2);
+        if (text) {
+          pdf.setFont(opts.bold ? 'helvetica' : 'helvetica', opts.bold ? 'bold' : 'normal');
+          pdf.setFontSize(opts.fontSize || 7);
+          pdf.setTextColor(...(opts.color || [30, 30, 30]));
+          const lines = pdf.splitTextToSize(text, w2 - 3);
+          const textH  = lines.length * (opts.fontSize || 7) * 0.4;
+          const textY  = y + h2 / 2 - textH / 2 + (opts.fontSize || 7) * 0.35;
+          pdf.text(lines, x + w2 / 2, textY, { align: 'center' });
+        }
+      };
+
+      // Header row — period numbers + time slots
+      const headerH = 12;
+      drawCell(margin, tableTop, colW0, headerH, 'Day', { bold: true, fontSize: 8, color: [20, 20, 60] });
+      for (let p = 0; p < numPeriods; p++) {
+        const x = margin + colW0 + p * colW;
+        const slotLabel = `${p + 1}\n${timeSlots[p] || ''}`;
+        drawCell(x, tableTop, colW, headerH, slotLabel, { bold: true, fontSize: 6.5, color: [20, 20, 60] });
+      }
+
+      // Data rows
+      for (let di = 0; di < days.length; di++) {
+        const y = tableTop + headerH + di * rowH;
+        drawCell(margin, y, colW0, rowH, days[di].slice(0, 3).toUpperCase(), { bold: true, fontSize: 7.5, color: [20, 20, 60] });
+        for (let pi = 0; pi < numPeriods; pi++) {
+          const x    = margin + colW0 + pi * colW;
+          const cell = grid[pi]?.[di];
+          const dept = cell?.department || '';
+          const subj = cell?.subject || '';
+          const cellText = subj ? `${subj}\n${dept}` : (dept && dept !== 'Common' ? dept : '');
+          drawCell(x, y, colW, rowH, cellText, { fontSize: 6.5 });
+        }
+      }
+
+      // ── Footer ──
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(130, 130, 130);
+      pdf.text(`Class: ${classId}  |  Generated: ${new Date().toLocaleDateString('en-IN')}  |  NIT Kurukshetra`, pgW / 2, pgH - 6, { align: 'center' });
+
+      pdf.save(`Timetable_${classId}_NIT_KKR.pdf`);
       showNotification('PDF downloaded! 📥', 'success');
-    } catch { showNotification('Failed to generate PDF', 'error'); }
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to generate PDF', 'error');
+    }
   };
 
   const downloadCSV = () => {
@@ -319,22 +451,21 @@ export default function Timetable() {
       {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
       <header style={{
         background: '#fff', borderBottom: '1px solid #ebebeb',
-        padding: '0 18px', height: 50, flexShrink: 0,
+        padding: '0 18px', height: 58, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10,
       }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div style={{ width: 28, height: 28, background: '#1a1a2e', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <rect x="1" y="3" width="14" height="12" rx="2" stroke="#fff" strokeWidth="1.4"/>
-              <line x1="5" y1="1" x2="5" y2="5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="11" y1="1" x2="11" y2="5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
-              <line x1="1" y1="7" x2="15" y2="7" stroke="#fff" strokeWidth="1.2"/>
-            </svg>
-          </div>
+        {/* NIT KKR Logo + Name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img
+            src="/logo.png"
+            alt="NIT Kurukshetra"
+            style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }}
+            onError={e => { e.target.style.display = 'none'; }}
+          />
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1a1a2e', letterSpacing: '-0.01em' }}>Timetable</div>
-            {classId && <div style={{ fontSize: '0.6rem', color: '#9ca3af', fontWeight: 500 }}>Class {classId}</div>}
+            <div style={{ fontWeight: 800, fontSize: '0.82rem', color: '#1a1a2e', letterSpacing: '0.01em', lineHeight: 1.2 }}>NATIONAL INSTITUTE OF TECHNOLOGY</div>
+            <div style={{ fontWeight: 600, fontSize: '0.7rem', color: '#7c3aed', letterSpacing: '0.04em', lineHeight: 1.2 }}>KURUKSHETRA</div>
+            {classId && <div style={{ fontSize: '0.56rem', color: '#9ca3af', fontWeight: 500, marginTop: 1 }}>Timetable · Class {classId}</div>}
           </div>
         </div>
 
@@ -372,6 +503,33 @@ export default function Timetable() {
 
           {/* Sub-toolbar: banners + class selector + day pills */}
           <div style={{ paddingRight: 14, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+
+            {/* ── Institutional info banner ── */}
+            {data && !tableLoading && (() => {
+              const domDept    = getDominantDept(grid);
+              const deptFull   = DEPT_FULL_NAME[domDept]  || DEPT_FULL_NAME.Common;
+              const roomInfo   = DEPT_ROOM[domDept]       || DEPT_ROOM.Common;
+              const blockLabel = `${roomInfo} · LAB TIME TABLE FOR ${CURRENT_SEMESTER}`;
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d5e 100%)',
+                  borderRadius: 10, padding: '10px 14px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}>
+                  <img src="/logo.png" alt="NIT KKR" style={{ width: 34, height: 34, objectFit: 'contain', flexShrink: 0, filter: 'brightness(1.1)' }} onError={e => { e.target.style.display = 'none'; }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.77rem', color: '#fff', letterSpacing: '0.03em', lineHeight: 1.3 }}>{deptFull}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.68rem', color: '#a5b4fc', letterSpacing: '0.04em', lineHeight: 1.3 }}>NATIONAL INSTITUTE OF TECHNOLOGY, KURUKSHETRA</div>
+                    <div style={{ fontSize: '0.6rem', color: '#93c5fd', marginTop: 2, fontWeight: 500 }}>{blockLabel}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: '#ffdd57', letterSpacing: '-0.01em' }}>{classId}</div>
+                    <div style={{ fontSize: '0.55rem', color: '#94a3b8', marginTop: 1 }}>Class ID</div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {!isApproved && !isAdmin && (
               <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#92400e', fontWeight: 500 }}>
                 <span>⚠</span> Your account is pending approval — read-only access.

@@ -232,17 +232,16 @@ function AdminDashboard() {
       <aside style={{ width:220, flexShrink:0, background:'#fff', borderRight:'1px solid #ebebeb', display:'flex', flexDirection:'column', padding:'20px 14px', gap:4, position:'sticky', top:0, height:'100vh', overflow:'auto' }}>
         {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 8px 20px' }}>
-          <div style={{ width:32, height:32, background:'#1a1a2e', borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-              <rect x="1" y="1" width="7" height="7" rx="1.5" fill="#fff" opacity="0.9"/>
-              <rect x="10" y="1" width="7" height="7" rx="1.5" fill="#ffdd57"/>
-              <rect x="1" y="10" width="7" height="7" rx="1.5" fill="#fff" opacity="0.5"/>
-              <rect x="10" y="10" width="7" height="7" rx="1.5" fill="#fff" opacity="0.7"/>
-            </svg>
-          </div>
+          <img
+            src="/logo.png"
+            alt="NIT Kurukshetra"
+            style={{ width:38, height:38, objectFit:'contain', flexShrink:0 }}
+            onError={e => { e.target.style.display='none'; }}
+          />
           <div>
-            <div style={{ fontWeight:700, fontSize:'0.88rem', color:'#1a1a2e', letterSpacing:'-0.01em' }}>Timetable</div>
-            <div style={{ fontSize:'0.65rem', color:'#9ca3af', fontWeight:500, marginTop:1 }}>Admin Console</div>
+            <div style={{ fontWeight:800, fontSize:'0.72rem', color:'#1a1a2e', letterSpacing:'0.01em', lineHeight:1.2 }}>NIT KURUKSHETRA</div>
+            <div style={{ fontSize:'0.63rem', color:'#7c3aed', fontWeight:600, marginTop:1, lineHeight:1.2 }}>Timetable System</div>
+            <div style={{ fontSize:'0.55rem', color:'#9ca3af', fontWeight:500, marginTop:1 }}>Admin Console</div>
           </div>
         </div>
 
@@ -285,6 +284,24 @@ function AdminDashboard() {
         {/* ══ OVERVIEW ═══════════════════════════════════════════════════════ */}
         {activeSection === 'overview' && (
           <div className="animate-fu">
+            {/* Institutional banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1a1a2e 0%, #312e81 100%)',
+              borderRadius: 14, padding: '16px 22px', marginBottom: 24,
+              display: 'flex', alignItems: 'center', gap: 16,
+            }}>
+              <img src="/logo.png" alt="NIT KKR" style={{ width:50, height:50, objectFit:'contain', flexShrink:0 }} onError={e => { e.target.style.display='none'; }} />
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:800, fontSize:'0.95rem', color:'#fff', letterSpacing:'0.03em', lineHeight:1.3 }}>DEPARTMENT OF COMPUTER ENGINEERING</div>
+                <div style={{ fontWeight:700, fontSize:'0.8rem', color:'#a5b4fc', letterSpacing:'0.04em', lineHeight:1.4 }}>NATIONAL INSTITUTE OF TECHNOLOGY, KURUKSHETRA</div>
+                <div style={{ fontSize:'0.7rem', color:'#93c5fd', marginTop:3, fontWeight:500 }}>Academic Timetable Management &bull; Even Semester 2024-25</div>
+              </div>
+              <div style={{ textAlign:'right', flexShrink:0 }}>
+                <div style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Admin Dashboard</div>
+                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'#ffdd57', marginTop:2 }}>{user.name?.split(' ')[0] || 'Admin'}</div>
+              </div>
+            </div>
+
             <div style={{ marginBottom:24 }}>
               <h1 style={{ fontSize:'1.5rem', fontWeight:700, color:'#1a1a2e', letterSpacing:'-0.02em' }}>Overview</h1>
               <p style={{ color:'#9ca3af', fontSize:'0.875rem', marginTop:4 }}>Good {new Date().getHours()<12?'morning':new Date().getHours()<17?'afternoon':'evening'}, {user.name?.split(' ')[0]||'Admin'}.</p>

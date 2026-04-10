@@ -46,9 +46,20 @@ function AdminLogin() {
 
   return (
     <div className="auth-container admin-login-theme">
-      <div className="auth-logo">🔐</div>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, marginBottom:8 }}>
+        <img
+          src="/logo.png"
+          alt="NIT Kurukshetra"
+          style={{ width:64, height:64, objectFit:'contain' }}
+          onError={e => { e.target.style.display='none'; }}
+        />
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontWeight:800, fontSize:'0.9rem', color:'#1a1a2e', letterSpacing:'0.03em', lineHeight:1.3 }}>NATIONAL INSTITUTE OF TECHNOLOGY</div>
+          <div style={{ fontWeight:700, fontSize:'0.78rem', color:'#7c3aed', letterSpacing:'0.05em', lineHeight:1.3 }}>KURUKSHETRA</div>
+        </div>
+      </div>
       <h2>Admin Portal</h2>
-      <p className="auth-subtitle">Restricted Access · NIT Kurukshetra</p>
+      <p className="auth-subtitle">Restricted Access · Timetable System</p>
 
       {error && <div className="error"><span>⚠️</span> {error}</div>}
 
